@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: weather-wrapper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: weather-wrapper
+  template:
+    metadata:
+      labels:
+        app: weather-wrapper
+    spec:
+      containers:
+      - name: weather-wrapper
+        image: rudinaimeri>/weather-wrapper:latest
+        ports:
+        - containerPort: 80
