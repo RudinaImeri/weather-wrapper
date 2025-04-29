@@ -1,3 +1,4 @@
+# Exposes the frontend app via NodePort 30081 to external traffic.
 apiVersion: v1
 kind: Service
 metadata:
