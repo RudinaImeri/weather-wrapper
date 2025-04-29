@@ -10,7 +10,7 @@ app = FastAPI()
 # (this is necessary so the frontend can call the API from another origin)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins (you can restrict this in production)
+    allow_origins=["*"],  # Allow all origins
     allow_methods=["GET"],  # Allow only GET requests
     allow_headers=["*"],  # Allow all headers
 )
@@ -39,11 +39,11 @@ def get_weather(
         "longitude": longitude,
         "hourly": "temperature_180m",
         "start": now_iso,
-        "end":   now_iso,
+        "end": now_iso,
         "timezone": "auto",
         "timeformat": "unixtime",
         "forecast_hours": 12,
-        "past_hours":     12,
+        "past_hours": 12,
         "temporal_resolution": "native",
     }
 
@@ -60,5 +60,31 @@ def get_weather(
 
 @app.get("/geocode")
 def geocode(
-    city: str = Query(..., description="City name to search
+    # Query parameter with description
+    city: str = Query(..., description="City name to search")
+):
+    """
+    Look up a city name via OpenStreetMap’s Nominatim
+    and return its latitude & longitude.
+    """
+    # Send the request to the OpenStreetMap Nominatim API
+    resp = requests.get(
+        "https://nominatim.openstreetmap.org/search",
+        params={"q": city, "format": "json", "limit": 1},
+        headers={"User-Agent": "weather-wrapper/1.0"}
+    )
 
+    # Raise an error if the API call failed
+    if resp.status_code != 200:
+        raise HTTPException(status_code=resp.status_code, detail=resp.text)
+
+    # Parse the response
+    results = resp.json()
+    if not results:
+        raise HTTPException(status_code=404, detail="Location not found")
+
+    # Return the coordinates of the first match
+    return {
+        "latitude": float(results[0]["lat"]),
+        "longitude": float(results[0]["lon"])
+    }
