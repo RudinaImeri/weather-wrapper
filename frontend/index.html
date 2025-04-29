@@ -1,19 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Meta information for character encoding -->
   <meta charset="UTF-8"/>
+  <!-- Title of the page -->
   <title>Weather & Map</title>
+  <!-- Internal CSS styling for layout and elements -->
   <style>
+    /* Set full height for HTML and body and remove margins */
     html, body {
       height: 100%;
       margin: 0;
     }
+    /* Center align the body content and set background color */
     body {
       display: flex;
       align-items: center;
       justify-content: center;
       background: #f8f9fa;
     }
+    /* Styling for the card container */
     .card {
       display: flex;
       flex-direction: column;
@@ -26,59 +32,75 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
       overflow: hidden;
     }
+    /* Styling for the inner content of the card */
     .card-body {
       flex: 1;
       display: flex;
       flex-direction: column;
       padding: 1rem;
     }
+    /* Map container styling */
     #map {
       flex: 1;
       min-height: 200px;
       margin-bottom: 1rem;
       border: 1px solid #ddd;
     }
+    /* Styling for the button container */
     .btn-wrapper {
       margin-top: auto;
     }
+    /* Button styling */
     button {
       width: 100%;
       padding: 0.75rem;
       font-size: 1.1rem;
     }
+    /* Styling for coordinates and result output */
     #coords, #out {
       margin-bottom: 1rem;
       word-break: break-all;
     }
   </style>
+  <!-- External stylesheets for Bootstrap and Leaflet -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
+  <!-- Main card container -->
   <div class="card">
     <div class="card-body">
+      <!-- Title for the application -->
       <h3 class="text-center mb-3">🌤️ Weather & Map</h3>
 
+      <!-- Input field for city name -->
       <label for="city">City</label>
       <input id="city" value="Berlin" class="form-control mb-3"/>
 
+      <!-- Placeholder for resolved coordinates -->
       <p><strong>Resolved coordinates:</strong> <span id="coords">–</span></p>
 
+      <!-- Map container -->
       <div id="map"></div>
 
+      <!-- Weather result output -->
       <h5>Result:</h5>
       <div id="out" class="bg-light p-2 rounded">–</div>
 
+      <!-- Button to trigger lookup and fetch temperature -->
       <div class="btn-wrapper">
         <button id="btn" class="btn btn-primary">Lookup & Get Temp</button>
       </div>
     </div>
   </div>
 
+  <!-- External JavaScript libraries for Bootstrap and Leaflet -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
+    // When the document is fully loaded
     document.addEventListener('DOMContentLoaded', () => {
+      // Initialize Leaflet map with a global view
       const map = L.map('map').setView([0, 0], 2);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -86,39 +108,46 @@
       }).addTo(map);
       let marker;
 
+      // DOM element references
       const out    = document.getElementById('out');
       const coords = document.getElementById('coords');
       const btn    = document.getElementById('btn');
 
+      // Event listener for the "Lookup & Get Temp" button
       btn.addEventListener('click', async () => {
-        const city = document.getElementById('city').value.trim();
+        const city = document.getElementById('city').value.trim(); // Read city input
         out.textContent    = 'Looking up coordinates…';
         coords.textContent = '…';
 
         try {
+          // Fetch geographic coordinates for the input city
           const geoRes = await fetch(`http://localhost:8080/geocode?city=${encodeURIComponent(city)}`);
           if (!geoRes.ok) throw new Error('Location not found');
           const { latitude, longitude } = await geoRes.json();
 
+          // Update map and coordinates display
           coords.textContent = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
           map.setView([latitude, longitude], 10);
           if (marker) map.removeLayer(marker);
           marker = L.marker([latitude, longitude]).addTo(map);
 
+          // Fetch weather information for the retrieved coordinates
           out.textContent = 'Fetching weather…';
           const w = await fetch(`http://localhost:8080/weather?latitude=${latitude}&longitude=${longitude}`);
           if (!w.ok) throw new Error(await w.text());
           const data = await w.json();
           const times = data.hourly.time,
-                temps = data.hourly.temperature_2m || data.hourly.temperature_180m,
-                idx   = Math.floor(times.length / 2),
+                temps = data.hourly.temperature_2m || data.hourly.temperature_180m, // Handle different temperature formats
+                idx   = Math.floor(times.length / 2), // Pick a time in the middle of the hourly data
                 raw   = times[idx],
                 dt    = (typeof raw === 'number') ? new Date(raw * 1000) : new Date(raw),
                 when  = dt.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }),
                 t     = temps[idx];
 
+          // Display the weather information
           out.textContent = `At ${when} → ${t}°C (for ${city})`;
         } catch (e) {
+          // Handle errors and reset output
           coords.textContent = '–';
           out.textContent    = 'Error: ' + e.message;
         }
