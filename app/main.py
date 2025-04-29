@@ -3,19 +3,19 @@ from fastapi.middleware.cors import CORSMiddleware
 import requests
 from datetime import datetime
 
-# Inicializimi i aplikacionit FastAPI
+# Initialize the FastAPI application
 app = FastAPI()
 
-# Konfigurimi i CORS për me lejuar kërkesat nga cilido origin
-# (e nevojshme që frontend të mund të thërrasë API-n nga një tjetër origin)
+# Configure CORS to allow requests from any origin
+# (this is necessary so the frontend can call the API from another origin)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Lejo të gjitha origin-et (në praktikë mund ta kufizosh)
-    allow_methods=["GET"],  # Lejo vetëm metodat GET
-    allow_headers=["*"],  # Lejo të gjitha header-at
+    allow_origins=["*"],  # Allow all origins (you can restrict this in production)
+    allow_methods=["GET"],  # Allow only GET requests
+    allow_headers=["*"],  # Allow all headers
 )
 
-# URL-ja bazë për API-n e motit nga Open-Meteo
+# Base URL for the Open-Meteo weather API
 BASE_URL = "https://api.open-meteo.com/v1/forecast"
 
 
@@ -25,15 +25,15 @@ def get_weather(
     longitude: float
 ):
     """
-    Merr temperaturën për orën aktuale për një lokacion të dhënë
-    duke përdorur Open-Meteo API (12 orë në të kaluarën + 12 në të ardhmen).
+    Fetches the current-hour temperature for the given location
+    using the Open-Meteo API (12 hours past + 12 hours forecast).
     """
-    # Marrja e kohës aktuale në format ISO, me minuta dhe sekonda të vendosura në 0
+    # Get the current UTC time in ISO format, rounded to the hour
     now_iso = datetime.utcnow().replace(
         minute=0, second=0, microsecond=0
     ).isoformat()
 
-    # Parametrat që i dërgohen Open-Meteo API
+    # Parameters sent to the Open-Meteo API
     params = {
         "latitude": latitude,
         "longitude": longitude,
@@ -47,46 +47,18 @@ def get_weather(
         "temporal_resolution": "native",
     }
 
-    # Kërkesa HTTP te Open-Meteo
+    # Send the HTTP request to Open-Meteo
     r = requests.get(BASE_URL, params=params)
 
-    # Nëse ka ndonjë gabim nga API, dërgo HTTP error
+    # If the API returns an error, raise an HTTP exception
     if r.status_code != 200:
         raise HTTPException(status_code=r.status_code, detail=r.text)
 
-    # Kthe të dhënat si JSON për frontend
+    # Return the response JSON to the frontend
     return r.json()
 
 
 @app.get("/geocode")
 def geocode(
-    city: str = Query(..., description="Emri i qytetit për me u kërku")
-):
-    """
-    Bën kërkim të koordinatave për një qytet përmes OpenStreetMap Nominatim API.
-    Kthen gjerësinë dhe gjatësinë gjeografike.
-    """
-    # Kërkesa HTTP te Nominatim API
-    resp = requests.get(
-        "https://nominatim.openstreetmap.org/search",
-        params={"q": city, "format": "json", "limit": 1},
-        headers={"User-Agent": "weather-wrapper/1.0"}  # Kërkohet nga API
-    )
-
-    # Kontrolli për status code të gabuar
-    if resp.status_code != 200:
-        raise HTTPException(status_code=resp.status_code, detail=resp.text)
-
-    # Përpunimi i përgjigjes
-    results = resp.json()
-
-    # Nëse nuk gjendet lokacioni, kthe HTTP 404
-    if not results:
-        raise HTTPException(status_code=404, detail="Location not found")
-
-    # Kthe koordinatat si JSON
-    return {
-        "latitude":  float(results[0]["lat"]),
-        "longitude": float(results[0]["lon"])
-    }
+    city: str = Query(..., description="City name to search
 
