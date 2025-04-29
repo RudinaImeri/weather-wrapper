@@ -1,3 +1,4 @@
+# Deploys the backend API (FastAPI) as a single replica using the weather-wrapper image.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
