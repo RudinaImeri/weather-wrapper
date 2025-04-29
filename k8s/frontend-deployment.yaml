@@ -1,3 +1,8 @@
+# Frontend Deployment for Kubernetes.
+# 1 replica 1 container based on img 'rudinaimeri/weather-frontend:latest'.
+# Port 80 exposed container for static frontend.
+# 'selector'for the deployment to manage only 'app: weather-frontend' marked units.
+# monitoring, restarting and maintenance of the pod.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
